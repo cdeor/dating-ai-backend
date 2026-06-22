@@ -7,6 +7,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,14 +29,12 @@ public class ConversationController {
     @PostMapping("/conversations")
     Conversation createConversation(@RequestBody ConversationRequest request) {
 
-        profileRepository.findById(request.profileId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND)
-                );
+        profileCheck(request.profileId, request.creatorId);
 
         Conversation conversation = new Conversation(
                 UUID.randomUUID().toString(),
                 request.profileId,
+                request.creatorId,
                 new ArrayList<>()
         );
 
@@ -66,6 +65,8 @@ public class ConversationController {
             @RequestBody ChatMessage chatMessage
     ) {
 
+        profileCheck(chatMessage.authorId());
+
         Conversation conversation = conversationRepository
                 .findById(conversationId)
                 .orElseThrow(() ->
@@ -73,27 +74,41 @@ public class ConversationController {
                                 "Conversation not found for id: " + conversationId)
                 );
 
-        profileRepository.findById(chatMessage.authorId())
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Profile not found for id: " + chatMessage.authorId())
-                );
-
-        ChatMessage msg = new ChatMessage(
+        ChatMessage newMsg = new ChatMessage(
                 chatMessage.messageText(),
                 chatMessage.authorId(),
                 LocalDateTime.now()
         );
 
-        conversation.messages().add(msg);
+        conversation.messages().add(newMsg);
 
         conversationRepository.save(conversation);
         return conversation;
     }
-
     record ConversationRequest(
-            String profileId
-    ) {
+            String profileId,
+            String creatorId
+    ) {}
+
+    private void profileCheck(String... profileIds) {
+
+        Arrays.stream(profileIds)
+                .filter(p -> !profileRepository.existsById(p))
+                .findFirst()
+                .ifPresent(profile -> {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Profile[" + profile + "] not found.");
+                });
     }
 
+    private void conversationCheck(String... conversationIds) {
+
+        Arrays.stream(conversationIds)
+                .filter(c -> !conversationRepository.existsById(c))
+                .findFirst()
+                .ifPresent(conversation -> {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Conversation[" + conversation + "] not found.");
+                });
+    }
 }
