@@ -17,14 +17,17 @@ public class ConversationController {
 
     private final ProfileRepository profileRepository;
     private final ConversationRepository conversationRepository;
+    private final ConversationService conversationService;
 
 
     public ConversationController(
             ProfileRepository profileRepository,
-            ConversationRepository conversationRepository
+            ConversationRepository conversationRepository,
+            ConversationService conversationService
     ) {
         this.conversationRepository = conversationRepository;
         this.profileRepository = profileRepository;
+        this.conversationService = conversationService;
     }
 
     @CrossOrigin(origins = "*")
@@ -92,14 +95,16 @@ public class ConversationController {
         );
 
         conversation.messages().add(newChatMsg);
-
+        conversation = conversationService.generateAiResponse(conversation, match, user);
         conversationRepository.save(conversation);
         return conversation;
     }
+
     record ConversationRequest(
             String profileId,
             String creatorId
-    ) {}
+    ) {
+    }
 
     private void profileCheck(String... profileIds) {
 
