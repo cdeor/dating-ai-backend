@@ -1,5 +1,6 @@
 package com.github.cdeor.dating_ai_backend.conversations;
 
+import com.github.cdeor.dating_ai_backend.profiles.Profile;
 import com.github.cdeor.dating_ai_backend.profiles.ProfileRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ public class ConversationController {
         this.profileRepository = profileRepository;
     }
 
+    @CrossOrigin(origins = "*")
     @PostMapping("/conversations")
     Conversation createConversation(@RequestBody ConversationRequest request) {
 
@@ -42,6 +44,7 @@ public class ConversationController {
         return conversation;
     }
 
+    @CrossOrigin(origins = "*")
     @GetMapping("/conversations/{conversationId}")
     public Conversation getConversations(
             @PathVariable String conversationId
@@ -54,18 +57,18 @@ public class ConversationController {
                 );
     }
 
+    @CrossOrigin(origins = "*")
     @GetMapping("/conversations")
     public List<Conversation> getAllConversations() {
         return conversationRepository.findAll();
     }
 
+    @CrossOrigin(origins = "*")
     @PostMapping("/conversations/{conversationId}")
     public Conversation addMessageToConversation(
             @PathVariable String conversationId,
             @RequestBody ChatMessage chatMessage
     ) {
-
-        profileCheck(chatMessage.authorId());
 
         Conversation conversation = conversationRepository
                 .findById(conversationId)
@@ -74,13 +77,21 @@ public class ConversationController {
                                 "Conversation not found for id: " + conversationId)
                 );
 
-        ChatMessage newMsg = new ChatMessage(
+        String matchId = conversation.profile_id();
+        String userId = chatMessage.authorId();
+
+        profileCheck(matchId, userId);
+
+        Profile match = profileRepository.findById(matchId).get();
+        Profile user = profileRepository.findById(userId).get();
+
+        ChatMessage newChatMsg = new ChatMessage(
                 chatMessage.messageText(),
                 chatMessage.authorId(),
                 LocalDateTime.now()
         );
 
-        conversation.messages().add(newMsg);
+        conversation.messages().add(newChatMsg);
 
         conversationRepository.save(conversation);
         return conversation;
